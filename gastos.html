@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Gastos">
+<title>💸 Meus Gastos</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f7; min-height: 100vh; padding-bottom: 40px; }
+
+/* HEADER */
+.header { background: #fff; padding: 20px 20px 14px; text-align: center; border-bottom: 1px solid #ebebeb; position: sticky; top: 0; z-index: 10; }
+.header h1 { font-size: 13px; font-weight: 600; color: #999; letter-spacing: 0.06em; text-transform: uppercase; }
+.total-valor { font-size: 34px; font-weight: 700; color: #c0392b; margin: 5px 0 2px; letter-spacing: -1px; }
+.total-sub { font-size: 13px; color: #bbb; }
+.progress-bar { height: 4px; background: #eee; border-radius: 3px; overflow: hidden; margin: 10px 0 4px; }
+.progress-fill { height: 100%; background: #27ae60; border-radius: 3px; transition: width 0.3s ease; }
+.progress-info { display: flex; justify-content: space-between; font-size: 11px; color: #bbb; }
+
+/* EDIT TOGGLE */
+.top-actions { display: flex; justify-content: flex-end; padding: 10px 14px 0; }
+.btn-edit-mode { background: none; border: 1.5px solid #ddd; border-radius: 8px; padding: 6px 14px; font-size: 12px; color: #888; font-family: inherit; cursor: pointer; }
+.btn-edit-mode.ativo { border-color: #e74c3c; color: #e74c3c; }
+
+/* SECTIONS */
+.section { margin: 10px 12px 0; background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
+.section-header { display: flex; justify-content: space-between; align-items: center; padding: 11px 14px 9px; border-bottom: 1px solid #f0f0f0; gap: 8px; }
+.section-title-wrap { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.section-title { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.section-total { font-size: 13px; font-weight: 600; color: #c0392b; flex-shrink: 0; }
+.btn-rename { display: none; background: none; border: none; font-size: 13px; cursor: pointer; padding: 2px 4px; }
+.editando .btn-rename { display: inline; }
+
+/* ITEMS */
+.item { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid #f5f5f5; -webkit-user-select: none; user-select: none; }
+.item:last-child { border-bottom: none; }
+
+.check { width: 22px; height: 22px; flex-shrink: 0; border: 2px solid #ddd; border-radius: 6px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; cursor: pointer; }
+.check svg { display: none; }
+.item.pago .check { background: #27ae60; border-color: #27ae60; }
+.item.pago .check svg { display: block; }
+
+.item-info { flex: 1; min-width: 0; cursor: pointer; }
+.item-nome { font-size: 14px; color: #1a1a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-parcela { font-size: 11px; color: #bbb; margin-top: 1px; }
+.item.pago .item-nome { color: #ccc; text-decoration: line-through; }
+.item.pago .item-valor { color: #ccc; }
+
+.item-valor { font-size: 14px; font-weight: 600; color: #333; flex-shrink: 0; }
+
+/* EDIT ACTIONS */
+.item-actions { display: none; gap: 6px; flex-shrink: 0; }
+.editando .item-actions { display: flex; }
+.editando .check { display: none; }
+.editando .item-info { cursor: default; }
+
+.btn-item { border: none; border-radius: 7px; padding: 6px 10px; font-size: 12px; font-family: inherit; cursor: pointer; }
+.btn-item-edit { background: #eef2ff; color: #4361ee; }
+.btn-item-del { background: #ffeef0; color: #e74c3c; }
+
+/* ADD ITEM */
+.add-row { display: none; padding: 10px 14px 12px; border-top: 1px solid #f0f0f0; }
+.editando .add-row { display: block; }
+.btn-add-item { width: 100%; background: #f5f5f7; border: 1.5px dashed #ddd; border-radius: 10px; padding: 9px; font-size: 13px; color: #aaa; font-family: inherit; cursor: pointer; }
+.btn-add-item:active { background: #ebebeb; }
+
+/* ADD SECTION */
+.btn-add-section { display: none; margin: 10px 12px 0; width: calc(100% - 24px); background: #fff; border: 1.5px dashed #ddd; border-radius: 14px; padding: 13px; font-size: 13px; color: #aaa; font-family: inherit; cursor: pointer; }
+.editando-global .btn-add-section { display: block; }
+
+/* RESET */
+.reset-btn { display: block; margin: 18px auto 0; background: none; border: 1.5px solid #eee; border-radius: 10px; padding: 10px 28px; font-size: 12px; color: #ccc; cursor: pointer; font-family: inherit; }
+
+/* MODAL */
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: flex-end; justify-content: center; }
+.modal-bg.aberto { display: flex; }
+.modal { background: #fff; border-radius: 20px 20px 0 0; padding: 24px 20px 36px; width: 100%; max-width: 480px; }
+.modal h2 { font-size: 16px; font-weight: 600; color: #1a1a1a; margin-bottom: 18px; }
+.modal label { font-size: 12px; color: #888; display: block; margin-bottom: 4px; }
+.modal input, .modal select { width: 100%; border: 1.5px solid #e0e0e0; border-radius: 10px; padding: 11px 14px; font-size: 15px; font-family: inherit; color: #1a1a1a; background: #fafafa; margin-bottom: 14px; outline: none; }
+.modal input:focus, .modal select:focus { border-color: #4361ee; }
+.modal-btns { display: flex; gap: 10px; margin-top: 4px; }
+.btn-cancel { flex: 1; background: #f5f5f7; border: none; border-radius: 10px; padding: 13px; font-size: 15px; color: #888; font-family: inherit; cursor: pointer; }
+.btn-confirm { flex: 2; background: #1a1a1a; border: none; border-radius: 10px; padding: 13px; font-size: 15px; color: #fff; font-family: inherit; cursor: pointer; font-weight: 500; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>💸 meus gastos</h1>
+  <div class="total-valor" id="totalGeral">R$ 0,00</div>
+  <div class="total-sub" id="totalSub">carregando...</div>
+  <div class="progress-bar"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+  <div class="progress-info"><span id="progTexto">0 pagos</span><span id="progPct">0%</span></div>
+</div>
+
+<div class="top-actions">
+  <button class="btn-edit-mode" id="btnEditMode" onclick="toggleEditar()">✏️ editar</button>
+</div>
+
+<div id="secoes"></div>
+
+<button class="btn-add-section" onclick="abrirModalSecao(null)">+ nova categoria</button>
+<button class="reset-btn" onclick="resetar()">↺ limpar marcações</button>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h2 id="modalTitulo">novo item</h2>
+    <label>nome</label>
+    <input type="text" id="inputNome" placeholder="ex: Spotify" />
+    <label>valor (R$)</label>
+    <input type="number" id="inputValor" placeholder="ex: 49.90" step="0.01" inputmode="decimal" />
+    <label>parcela (opcional)</label>
+    <input type="text" id="inputParcela" placeholder="ex: 03/12" />
+    <label>categoria</label>
+    <select id="inputSecao"></select>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="fecharModal()">cancelar</button>
+      <button class="btn-confirm" onclick="confirmarModal()">salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SECAO -->
+<div class="modal-bg" id="modalSecaoBg">
+  <div class="modal">
+    <h2 id="modalSecaoTitulo">nova categoria</h2>
+    <label>nome da categoria</label>
+    <input type="text" id="inputSecaoNome" placeholder="ex: Streaming" />
+    <label>vencimento (opcional)</label>
+    <input type="text" id="inputSecaoVenc" placeholder="ex: dia 15" />
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="fecharModalSecao()">cancelar</button>
+      <button class="btn-confirm" onclick="confirmarModalSecao()">salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'gastos_v2';
+
+const dadosPadrao = {
+  secoes: [
+    {
+      id: 's1', titulo: '💳 Credicard', venc: 'venc. 09',
+      itens: [
+        { id: 'cc0', nome: 'Amazon', parcela: '08/10', valor: 66.91 },
+        { id: 'cc1', nome: 'Amazon', parcela: '08/10', valor: 177.14 },
+        { id: 'cc2', nome: 'iCloud', parcela: '', valor: 9.95 },
+        { id: 'cc3', nome: 'Gol Linhas Aéreas', parcela: '07/10', valor: 142.75 },
+        { id: 'cc4', nome: 'KaBuM', parcela: '07/10', valor: 150.00 },
+        { id: 'cc5', nome: 'Air Fryer', parcela: '02/10', valor: 54.90 },
+        { id: 'cc6', nome: 'Shopee Romant', parcela: '04/10', valor: 85.46 },
+        { id: 'cc7', nome: 'Geladeira', parcela: '5/18', valor: 188.58 },
+        { id: 'cc8', nome: 'RecargaPay', parcela: '3/06', valor: 558.87 },
+      ]
+    },
+    {
+      id: 's2', titulo: '💳 Nubank', venc: 'venc. 20',
+      itens: [
+        { id: 'nu0', nome: 'Aki tem', parcela: '03/03', valor: 72.90 },
+        { id: 'nu1', nome: 'Shopee', parcela: '03/03', valor: 56.93 },
+        { id: 'nu2', nome: 'Boticário', parcela: '03/03', valor: 43.98 },
+        { id: 'nu3', nome: 'Gympass', parcela: '', valor: 149.99 },
+      ]
+    },
+    {
+      id: 's3', titulo: '🏠 Gastos fixos', venc: 'vale',
+      itens: [
+        { id: 'fx0', nome: 'CPFL', parcela: '', valor: 200.00 },
+        { id: 'fx1', nome: 'BRK', parcela: '', valor: 70.00 },
+        { id: 'fx2', nome: 'Desktop', parcela: '', valor: 140.00 },
+      ]
+    }
+  ],
+  pagos: {}
+};
+
+let estado = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || JSON.parse(JSON.stringify(dadosPadrao));
+let modoEditar = false;
+let modalCallback = null;
+let editandoItem = null;
+let editandoSecaoId = null;
+
+function salvar() { localStorage.setItem(STORAGE_KEY, JSON.stringify(estado)); }
+function fmt(v) { return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+function uid() { return 'i' + Date.now() + Math.random().toString(36).slice(2,6); }
+
+function toggleEditar() {
+  modoEditar = !modoEditar;
+  document.getElementById('btnEditMode').textContent = modoEditar ? '✅ concluir' : '✏️ editar';
+  document.getElementById('btnEditMode').className = 'btn-edit-mode' + (modoEditar ? ' ativo' : '');
+  document.body.className = modoEditar ? 'editando-global' : '';
+  renderTudo();
+}
+
+function renderTudo() {
+  const container = document.getElementById('secoes');
+  container.innerHTML = '';
+  let totalGeral = 0;
+  let totalItens = 0;
+  let totalPagos = 0;
+
+  estado.secoes.forEach(sec => {
+    const secTotal = sec.itens.reduce((a, i) => a + i.valor, 0);
+    totalGeral += secTotal;
+    totalItens += sec.itens.length;
+    totalPagos += sec.itens.filter(i => estado.pagos[i.id]).length;
+
+    const div = document.createElement('div');
+    div.className = 'section' + (modoEditar ? ' editando' : '');
+
+    const headerLabel = sec.venc ? `${sec.titulo} — ${sec.venc}` : sec.titulo;
+
+    div.innerHTML = `
+      <div class="section-header">
+        <div class="section-title-wrap">
+          <span class="section-title">${headerLabel}</span>
+          <button class="btn-rename" onclick="abrirModalSecao('${sec.id}')">✏️</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${modoEditar ? `<button class="btn-item" style="background:#fff0f0;color:#e74c3c;font-size:11px;" onclick="deletarSecao('${sec.id}')">🗑 remover</button>` : ''}
+          <span class="section-total">${fmt(secTotal)}</span>
+        </div>
+      </div>
+      <div id="itens-${sec.id}"></div>
+      <div class="add-row">
+        <button class="btn-add-item" onclick="abrirModalItem(null,'${sec.id}')">+ adicionar item</button>
+      </div>
+    `;
+    container.appendChild(div);
+
+    const listaEl = div.querySelector(`#itens-${sec.id}`);
+    sec.itens.forEach(item => {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'item' + (estado.pagos[item.id] ? ' pago' : '');
+      itemDiv.innerHTML = `
+        <div class="check" onclick="togglePago('${item.id}')">
+          <svg width="13" height="10" viewBox="0 0 13 10" fill="none">
+            <path d="M1.5 5L5 8.5L11.5 1.5" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="item-info" onclick="togglePago('${item.id}')">
+          <div class="item-nome">${item.nome}</div>
+          ${item.parcela ? `<div class="item-parcela">parcela ${item.parcela}</div>` : ''}
+        </div>
+        <div class="item-valor">${fmt(item.valor)}</div>
+        <div class="item-actions">
+          <button class="btn-item btn-item-edit" onclick="abrirModalItem('${item.id}','${sec.id}')">editar</button>
+          <button class="btn-item btn-item-del" onclick="deletarItem('${item.id}','${sec.id}')">remover</button>
+        </div>
+      `;
+      listaEl.appendChild(itemDiv);
+    });
+  });
+
+  document.getElementById('totalGeral').textContent = fmt(totalGeral);
+  const restante = totalItens - totalPagos;
+  document.getElementById('totalSub').textContent =
+    totalPagos === 0 ? 'nenhum pago ainda 😬'
+    : totalPagos === totalItens ? 'tudo pago! 🎉'
+    : `${restante} item${restante > 1 ? 's' : ''} pendente${restante > 1 ? 's' : ''}`;
+  const pct = totalItens ? Math.round(totalPagos / totalItens * 100) : 0;
+  document.getElementById('progFill').style.width = pct + '%';
+  document.getElementById('progTexto').textContent = `${totalPagos} de ${totalItens} pagos`;
+  document.getElementById('progPct').textContent = pct + '%';
+}
+
+function togglePago(id) {
+  if (modoEditar) return;
+  estado.pagos[id] = !estado.pagos[id];
+  salvar(); renderTudo();
+}
+
+/* MODAL ITEM */
+function abrirModalItem(itemId, secId) {
+  editandoItem = itemId;
+  editandoSecaoId = secId;
+  document.getElementById('modalTitulo').textContent = itemId ? 'editar item' : 'novo item';
+
+  const sel = document.getElementById('inputSecao');
+  sel.innerHTML = estado.secoes.map(s => `<option value="${s.id}" ${s.id === secId ? 'selected' : ''}>${s.titulo}</option>`).join('');
+
+  if (itemId) {
+    const sec = estado.secoes.find(s => s.id === secId);
+    const item = sec.itens.find(i => i.id === itemId);
+    document.getElementById('inputNome').value = item.nome;
+    document.getElementById('inputValor').value = item.valor;
+    document.getElementById('inputParcela').value = item.parcela || '';
+  } else {
+    document.getElementById('inputNome').value = '';
+    document.getElementById('inputValor').value = '';
+    document.getElementById('inputParcela').value = '';
+  }
+  document.getElementById('modalBg').className = 'modal-bg aberto';
+  setTimeout(() => document.getElementById('inputNome').focus(), 100);
+}
+
+function fecharModal() { document.getElementById('modalBg').className = 'modal-bg'; }
+
+function confirmarModal() {
+  const nome = document.getElementById('inputNome').value.trim();
+  const valor = parseFloat(document.getElementById('inputValor').value);
+  const parcela = document.getElementById('inputParcela').value.trim();
+  const secId = document.getElementById('inputSecao').value;
+  if (!nome || isNaN(valor)) return;
+
+  if (editandoItem) {
+    const sec = estado.secoes.find(s => s.id === editandoSecaoId);
+    const idx = sec.itens.findIndex(i => i.id === editandoItem);
+    const itemAtual = sec.itens[idx];
+    if (secId !== editandoSecaoId) {
+      sec.itens.splice(idx, 1);
+      const novaSec = estado.secoes.find(s => s.id === secId);
+      novaSec.itens.push({ ...itemAtual, nome, valor, parcela });
+    } else {
+      sec.itens[idx] = { ...itemAtual, nome, valor, parcela };
+    }
+  } else {
+    const sec = estado.secoes.find(s => s.id === secId);
+    sec.itens.push({ id: uid(), nome, valor, parcela });
+  }
+  salvar(); fecharModal(); renderTudo();
+}
+
+/* MODAL SECAO */
+function abrirModalSecao(secId) {
+  editandoSecaoId = secId;
+  document.getElementById('modalSecaoTitulo').textContent = secId ? 'editar categoria' : 'nova categoria';
+  if (secId) {
+    const sec = estado.secoes.find(s => s.id === secId);
+    document.getElementById('inputSecaoNome').value = sec.titulo;
+    document.getElementById('inputSecaoVenc').value = sec.venc || '';
+  } else {
+    document.getElementById('inputSecaoNome').value = '';
+    document.getElementById('inputSecaoVenc').value = '';
+  }
+  document.getElementById('modalSecaoBg').className = 'modal-bg aberto';
+  setTimeout(() => document.getElementById('inputSecaoNome').focus(), 100);
+}
+
+function fecharModalSecao() { document.getElementById('modalSecaoBg').className = 'modal-bg'; }
+
+function confirmarModalSecao() {
+  const nome = document.getElementById('inputSecaoNome').value.trim();
+  const venc = document.getElementById('inputSecaoVenc').value.trim();
+  if (!nome) return;
+  if (editandoSecaoId) {
+    const sec = estado.secoes.find(s => s.id === editandoSecaoId);
+    sec.titulo = nome; sec.venc = venc;
+  } else {
+    estado.secoes.push({ id: uid(), titulo: nome, venc, itens: [] });
+  }
+  salvar(); fecharModalSecao(); renderTudo();
+}
+
+function deletarItem(itemId, secId) {
+  if (!confirm('Remover este item?')) return;
+  const sec = estado.secoes.find(s => s.id === secId);
+  sec.itens = sec.itens.filter(i => i.id !== itemId);
+  delete estado.pagos[itemId];
+  salvar(); renderTudo();
+}
+
+function deletarSecao(secId) {
+  if (!confirm('Remover esta categoria e todos os itens?')) return;
+  const sec = estado.secoes.find(s => s.id === secId);
+  sec.itens.forEach(i => delete estado.pagos[i.id]);
+  estado.secoes = estado.secoes.filter(s => s.id !== secId);
+  salvar(); renderTudo();
+}
+
+function resetar() {
+  if (confirm('Limpar todas as marcações de pago?')) {
+    estado.pagos = {}; salvar(); renderTudo();
+  }
+}
+
+renderTudo();
+</script>
+</body>
+</html>
